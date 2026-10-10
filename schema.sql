@@ -1,11 +1,6 @@
-﻿-- Database Schema for Employee Management System (EMS)
--- Fully compatible with all MySQL 5.7+, MySQL 8.0+, and MariaDB versions
+-- Database Schema for Employee Management System (EMS)
+-- Fully compatible with all MySQL 5.7+, MySQL 8.0+, MariaDB, and cloud-hosted MySQL (Aiven, AWS RDS, Render)
 
-CREATE DATABASE IF NOT EXISTS employee_db
-CHARACTER SET utf8mb4
-COLLATE utf8mb4_unicode_ci;
-
-USE employee_db;
 
 -- 1. Departments Table
 CREATE TABLE IF NOT EXISTS departments (

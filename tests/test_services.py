@@ -367,3 +367,57 @@ def test_get_department_by_id():
         assert dept['name'] == 'Engineering'
         assert dept['employee_count'] == 4
 
+
+def test_production_config_rejects_missing_or_insecure_secret_key():
+    """Verify that ProductionConfig strictly rejects missing or placeholder SECRET_KEY."""
+    import os
+    import pytest
+    from config import ProductionConfig
+
+    # 1. Missing / empty SECRET_KEY
+    with patch.dict(os.environ, {'SECRET_KEY': ''}, clear=False):
+        with pytest.raises(ValueError, match="Production security violation"):
+            ProductionConfig.validate_production()
+
+    # 2. Known default insecure placeholder
+    with patch.dict(os.environ, {'SECRET_KEY': 'dev-insecure-secret-key-change-me'}, clear=False):
+        with pytest.raises(ValueError, match="Production security violation"):
+            ProductionConfig.validate_production()
+
+    # 3. Key too short (< 16 characters)
+    with patch.dict(os.environ, {'SECRET_KEY': 'short-secret'}, clear=False):
+        with pytest.raises(ValueError, match="Production security violation"):
+            ProductionConfig.validate_production()
+
+
+def test_production_config_accepts_strong_secret_key():
+    """Verify that ProductionConfig successfully accepts a cryptographically strong SECRET_KEY."""
+    import os
+    from config import ProductionConfig
+
+    strong_key = "a1b2c3d4e5f678901234567890abcdef"
+    with patch.dict(os.environ, {'SECRET_KEY': strong_key}, clear=False):
+        validated = ProductionConfig.validate_production()
+        assert validated == strong_key
+        assert ProductionConfig.SECRET_KEY == strong_key
+
+
+def test_clean_sql_statements_filters_db_commands_for_cloud():
+    """Verify that _clean_sql_statements with skip_db_commands=True strips CREATE DATABASE and USE statements."""
+    sample_sql = """
+    -- Cloud init script
+    CREATE DATABASE IF NOT EXISTS employee_db;
+    USE employee_db;
+
+    CREATE TABLE IF NOT EXISTS departments (
+        id INT PRIMARY KEY,
+        name VARCHAR(100)
+    );
+    """
+    stmts = _clean_sql_statements(sample_sql, skip_db_commands=True)
+    assert len(stmts) == 1
+    assert "CREATE TABLE IF NOT EXISTS departments" in stmts[0]
+    assert not any("CREATE DATABASE" in s for s in stmts)
+    assert not any("USE " in s for s in stmts)
+
+

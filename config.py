@@ -1,4 +1,4 @@
-﻿"""
+"""
 Application Configuration Module
 Loads configuration settings from environment variables with safe defaults.
 """
@@ -15,6 +15,17 @@ if dotenv_path.exists():
     load_dotenv(dotenv_path)
 
 
+INSECURE_SECRET_KEYS = {
+    'dev-insecure-secret-key-change-me',
+    'change-this-to-a-secure-random-secret-key-in-production',
+    'enter-a-random-secure-string-here',
+    'secret',
+    'password',
+    'default',
+    'your-secret-key-here',
+}
+
+
 class Config:
     """Base Configuration Class."""
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-insecure-secret-key-change-me')
@@ -26,6 +37,10 @@ class Config:
     DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
     DB_NAME = os.environ.get('DB_NAME', 'employee_db')
     
+    # SSL/TLS Database Settings (for managed cloud databases e.g., Aiven, AWS RDS)
+    DB_SSL_CA = os.environ.get('DB_SSL_CA', None)
+    DB_SSL_DISABLED = os.environ.get('DB_SSL_DISABLED', 'false').lower() in ('true', '1', 'yes')
+
     # Connection Pool Settings
     DB_POOL_NAME = 'ems_pool'
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', 5))
@@ -60,6 +75,26 @@ class ProductionConfig(Config):
     DEBUG = False
     TESTING = False
     SESSION_COOKIE_SECURE = True
+    
+    # In production, fallback keys are rejected; SECRET_KEY must be provided via environment
+    SECRET_KEY = os.environ.get('SECRET_KEY', '')
+
+    @classmethod
+    def validate_production(cls):
+        """
+        Validates that critical production environment variables are properly configured.
+        Raises ValueError if SECRET_KEY is missing, insecure, or too short.
+        """
+        secret = os.environ.get('SECRET_KEY', '').strip()
+        if not secret or secret in INSECURE_SECRET_KEYS or len(secret) < 16:
+            raise ValueError(
+                "Production security violation: FLASK_ENV=production requires a strong, random SECRET_KEY "
+                "set via the SECRET_KEY environment variable (minimum 16 characters). "
+                "The development fallback key is strictly disallowed in production. "
+                "Generate a cryptographically secure key with: python -c \"import secrets; print(secrets.token_hex(32))\""
+            )
+        cls.SECRET_KEY = secret
+        return secret
 
 
 config_by_name = {
@@ -73,4 +108,8 @@ config_by_name = {
 def get_config():
     """Retrieve the active configuration based on FLASK_ENV or FLASK_CONFIG."""
     env_name = os.environ.get('FLASK_ENV', os.environ.get('FLASK_CONFIG', 'development')).lower()
-    return config_by_name.get(env_name, DevelopmentConfig)
+    config_cls = config_by_name.get(env_name, DevelopmentConfig)
+    if issubclass(config_cls, ProductionConfig):
+        config_cls.validate_production()
+    return config_cls
+

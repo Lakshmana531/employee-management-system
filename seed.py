@@ -1,4 +1,4 @@
-﻿"""
+"""
 Database Seeding Script
 Initializes tables and seeds starter departments, realistic sample employees,
 and an administrator account for local development and demonstration.
@@ -220,28 +220,55 @@ def seed_employees():
     print(f"   Done. Added {created_count} sample employees.")
 
 
-def seed_admin(username="admin", email="admin@ems.local", password="Admin@Password123", full_name="System Administrator"):
-    """Seeds a starter administrator account."""
-    print(f"-> Seeding administrator account '{username}'...")
+def seed_admin(username=None, email=None, password=None, full_name=None):
+    """
+    Seeds an administrator account using environment variables or safe dev defaults.
+    Never overwrites an existing administrator.
+    """
+    import os
+    env_name = os.environ.get('FLASK_ENV', os.environ.get('FLASK_CONFIG', 'development')).lower()
+    is_production = env_name == 'production'
+
+    admin_user = username or os.environ.get('ADMIN_USERNAME', 'admin')
+    admin_email = email or os.environ.get('ADMIN_EMAIL', 'admin@ems.local')
+    admin_name = full_name or os.environ.get('ADMIN_NAME', 'System Administrator')
+    admin_pass = password or os.environ.get('ADMIN_PASSWORD')
+
+    print(f"-> Seeding administrator account '{admin_user}'...")
     with get_db_cursor() as cursor:
-        cursor.execute("SELECT id FROM admins WHERE username = %s OR email = %s", [username, email])
+        cursor.execute("SELECT id FROM admins WHERE username = %s OR email = %s", [admin_user, admin_email])
         if cursor.fetchone():
-            print(f"   Admin '{username}' already exists. Skipping.")
+            print(f"   Admin '{admin_user}' already exists. Skipping.")
             return
 
-    success, admin_id, err = create_admin(username, email, password, full_name)
+    if not admin_pass:
+        if is_production:
+            print("   [NOTICE] In production, ADMIN_PASSWORD environment variable must be specified to seed an admin.")
+            print("            Skipping automated admin creation. Create an admin account securely using:")
+            print("            flask create-admin")
+            return
+        else:
+            admin_pass = "Admin@Password123"
+
+    success, admin_id, err = create_admin(admin_user, admin_email, admin_pass, admin_name)
     if success:
-        print(f"   Admin '{username}' created successfully!")
-        print(f"   Default Login: Username: {username} | Password: {password}")
+        print(f"   Admin '{admin_user}' created successfully (ID: {admin_id})!")
+        if is_production:
+            print("   Credentials configured via environment.")
+        else:
+            print(f"   Local Dev Login: Username: {admin_user}")
     else:
         print(f"   Failed to create admin: {err}")
 
 
 def main():
+    import os
     parser = argparse.ArgumentParser(description="EMS Database Initializer and Seeder")
     parser.add_argument("--admin-only", action="store_true", help="Only seed the admin user")
-    parser.add_argument("--username", default="admin", help="Admin username")
-    parser.add_argument("--password", default="Admin@Password123", help="Admin password")
+    parser.add_argument("--username", default=None, help="Admin username (default: env ADMIN_USERNAME or 'admin')")
+    parser.add_argument("--email", default=None, help="Admin email (default: env ADMIN_EMAIL or 'admin@ems.local')")
+    parser.add_argument("--password", default=None, help="Admin password (default: env ADMIN_PASSWORD)")
+    parser.add_argument("--full-name", default=None, help="Admin full name")
     args = parser.parse_args()
 
     print("==================================================")
@@ -255,11 +282,16 @@ def main():
         print("   Database schema verified and up to date.")
     except Exception as e:
         print(f"ERROR: Could not initialize database schema:\n{e}")
-        print("\nPlease ensure MySQL is running and your .env file is properly configured.")
+        print("\nPlease ensure MySQL is running and your environment variables are properly configured.")
         sys.exit(1)
 
     # 2. Seed Admin
-    seed_admin(username=args.username, password=args.password)
+    seed_admin(
+        username=args.username,
+        email=args.email,
+        password=args.password,
+        full_name=args.full_name
+    )
 
     if not args.admin_only:
         # 3. Seed Departments & Employees
@@ -267,8 +299,9 @@ def main():
         seed_employees()
 
     print("\n[SUCCESS] Seeding completed successfully!")
-    print("You can now start the application with: python app.py")
+    print("You can now start the application.")
 
 
 if __name__ == '__main__':
     main()
+

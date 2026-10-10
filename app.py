@@ -1,4 +1,4 @@
-﻿"""
+"""
 Employee Management System (EMS)
 Main Application Entrypoint & Factory
 """
@@ -8,7 +8,7 @@ from decimal import Decimal
 from datetime import datetime
 from flask import Flask, render_template, session, request
 from flask_wtf.csrf import CSRFProtect
-from config import get_config
+from config import get_config, ProductionConfig
 from db import close_db_connection, init_db, DatabaseConnectionError, DatabaseError
 from routes.auth import auth_bp
 from routes.dashboard import dashboard_bp
@@ -28,9 +28,12 @@ def create_app(config_object=None):
     app = Flask(__name__)
 
     if config_object:
+        if isinstance(config_object, type) and issubclass(config_object, ProductionConfig):
+            config_object.validate_production()
         app.config.from_object(config_object)
     else:
         app.config.from_object(get_config())
+
 
     # Initialize CSRF protection
     csrf.init_app(app)
@@ -141,4 +144,8 @@ app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app.run(host='127.0.0.1', port=port, debug=True)
+    host = os.environ.get('HOST', '127.0.0.1')
+    is_production = os.environ.get('FLASK_ENV', '').lower() == 'production'
+    debug = False if is_production else app.config.get('DEBUG', False)
+    app.run(host=host, port=port, debug=debug)
+
