@@ -1,4 +1,4 @@
-﻿/* ==========================================================================
+/* ==========================================================================
    EMS Portal - Enterprise Employee Management System
    Modern SaaS HR Admin Theme
    ========================================================================== */
@@ -765,7 +765,8 @@ a:hover {
 
 /* Forms & Inputs */
 .form-container {
-    max-width: 900px;
+    width: 100%;
+    max-width: 100%;
     margin: 0 auto;
 }
 
@@ -961,7 +962,8 @@ a:hover {
 
 /* Profile Detail Layout */
 .profile-container {
-    max-width: 1000px;
+    width: 100%;
+    max-width: 100%;
     margin: 0 auto;
 }
 
@@ -1145,7 +1147,8 @@ a:hover {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 1.25rem;
-    max-width: 1000px;
+    width: 100%;
+    max-width: 100%;
     margin: 0 auto;
 }
 

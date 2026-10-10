@@ -18,6 +18,7 @@
             </a>
         </div>
 
+        <div class="card-body">
             <form action="{{ url_for('employees.add') }}" method="POST" novalidate>
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
