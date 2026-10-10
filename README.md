@@ -6,14 +6,16 @@ A complete, production-grade, web-based Employee Management System built with **
 
 ## Table of Contents
 
+- [Application Preview & Screenshots](#application-preview--screenshots)
 - [Key Features](#key-features)
 - [Technology Stack](#technology-stack)
+- [Portfolio & Architectural Highlights](#portfolio--architectural-highlights)
 - [Project Architecture](#project-architecture)
 - [Database Schema](#database-schema)
-- [Step-by-Step Windows & VS Code Setup Guide](#step-by-step-windows--vs-code-setup-guide)
+- [Step-by-Step Setup Guide (Clean Environment)](#step-by-step-setup-guide-clean-environment)
   - [1. Prerequisites](#1-prerequisites)
-  - [2. Open the Project in VS Code](#2-open-the-project-in-vs-code)
-  - [3. Create and Activate a Python Virtual Environment](#3-create-and-activate-a-python-virtual-environment)
+  - [2. Clone the Repository](#2-clone-the-repository)
+  - [3. Create and Activate Virtual Environment](#3-create-and-activate-virtual-environment)
   - [4. Install Required Packages](#4-install-required-packages)
   - [5. Setup and Configure MySQL](#5-setup-and-configure-mysql)
   - [6. Configure Environment Variables (.env)](#6-configure-environment-variables-env)
@@ -23,6 +25,35 @@ A complete, production-grade, web-based Employee Management System built with **
 - [Running Automated Tests](#running-automated-tests)
 - [Security and Data Protection](#security-and-data-protection)
 - [Troubleshooting Common Issues on Windows](#troubleshooting-common-issues-on-windows)
+
+---
+
+## Application Preview & Screenshots
+
+### 1. Executive Dashboard
+Real-time KPI metrics (total workforce, active rate, operating units, average compensation), interactive Chart.js visualizations (department headcount doughnut chart and monthly onboarding line chart), and recent employee additions:
+
+![Executive Dashboard](docs/screenshots/dashboard.png)
+
+### 2. Employee Management Roster
+Server-side search across Employee ID, Full Name, Email, and Job Title; multi-field filtering by Department, Status, and Joining Date range; allowlist-protected sorting and pagination:
+
+![Employee Management Roster](docs/screenshots/employee_list.png)
+
+### 3. Employee Registration & Edit Form
+Comprehensive form with strict server-side validation, duplicate email detection, department selection, salary bounds, date pickers, and user feedback:
+
+![Employee Form](docs/screenshots/employee_form.png)
+
+### 4. Department Directory & Structure
+Business unit directory displaying assigned headcount badges, quick roster view links, department creation/editing modals, and referential deletion protection:
+
+![Departments Directory](docs/screenshots/departments.png)
+
+### 5. Workforce Reports & Safe CSV Exports
+Company-wide payroll analysis (minimum, maximum, average salary, and total payroll per department) with formula-sanitized CSV export and UTF-8 BOM encoding for Excel compatibility:
+
+![Reports and Analytics](docs/screenshots/reports.png)
 
 ---
 
@@ -74,6 +105,22 @@ A complete, production-grade, web-based Employee Management System built with **
 - **Icons**: Lucide Icons (CDN)
 - **Visualizations**: Chart.js 4.4+ (CDN)
 - **Testing**: `pytest`
+
+---
+
+## Portfolio & Architectural Highlights
+
+This project demonstrates software engineering best practices suitable for modern production environments:
+
+- **Modular Blueprints Architecture**: Strict separation of concerns across functional domains (`auth`, `dashboard`, `employees`, `departments`, `reports`, `settings`).
+- **Service Layer Pattern**: Business logic, query construction, and data validation are completely decoupled from HTTP controllers in dedicated service modules (`services/`).
+- **Database Connection Pooling**: Built with `mysql.connector.pooling.MySQLConnectionPool` to manage reusable database connections efficiently and eliminate per-request overhead.
+- **Teardown App Context Management**: Registered with `app.teardown_appcontext(close_db_connection)` to guarantee automatic closure and zero dangling database connections.
+- **Strict SQL Injection Mitigation**: Every SQL statement utilizes parameterized query bindings (`%s`). Dynamic column ordering strictly enforces dictionary allowlists (`ALLOWED_SORT_COLUMNS`, `ALLOWED_SORT_ORDERS`).
+- **Robust Multi-Layer Validation**: Server-side validations check email formats, duplicate entries across existing employees, phone numbers, date bounds (1950–2100), and salary ranges before reaching the database.
+- **CSV Formula Injection Sanitization**: Neutralizes spreadsheet execution vulnerabilities (`=`, `+`, `-`, `@`, `\t`, `\r`) during data exports.
+- **CSRF & Session Hardening**: State-changing POST requests require validated CSRF tokens via `Flask-WTF`; administrative sessions use `HttpOnly`, `SameSite='Lax'`, and password hashing via `scrypt`.
+- **Comprehensive Automated Testing**: 56 unit and integration tests executing in under 1 second without external database dependencies through fixtures and mock layers.
 
 ---
 
@@ -181,46 +228,57 @@ admins
 
 ---
 
-## Step-by-Step Windows & VS Code Setup Guide
+## Step-by-Step Setup Guide (Clean Environment)
 
 ### 1. Prerequisites
-- **Python 3.10+**: Download from [python.org](https://www.python.org/downloads/) (ensure **"Add Python to PATH"** is checked during installation).
-- **MySQL Server**: You can use either:
-  - Official **MySQL Community Server & Workbench**: [mysql.com/downloads/](https://dev.mysql.com/downloads/installer/)
-  - Or **XAMPP** (includes MySQL / MariaDB with a 1-click start button): [apachefriends.org](https://www.apachefriends.org/)
+- **Python 3.10+**: Download from [python.org](https://www.python.org/downloads/) (ensure **"Add Python to PATH"** is selected during installation).
+- **MySQL Server 8.0+** or **MariaDB 10.4+**:
+  - Official **MySQL Community Server**: [mysql.com/downloads/](https://dev.mysql.com/downloads/installer/)
+  - Or **XAMPP / MariaDB**: [apachefriends.org](https://www.apachefriends.org/)
+- **Git**: [git-scm.com](https://git-scm.com/)
 
-### 2. Open the Project in VS Code
-1. Open Visual Studio Code.
-2. Select **File > Open Folder...** and navigate to:
-   ```
-   C:\Users\claks\.gemini\antigravity\scratch\employee_management_system
-   ```
-3. Open the integrated terminal (**Terminal > New Terminal** or press ``Ctrl + ` ``).
+### 2. Clone the Repository
+Open PowerShell or your preferred terminal and clone the repository:
+```bash
+git clone https://github.com/Lakshmana531/employee-management-system.git
+cd employee-management-system
+```
 
 ### 3. Create and Activate a Python Virtual Environment
-Run the following in PowerShell:
+**On Windows (PowerShell):**
 ```powershell
 python -m venv .venv
-```
-
-Activate the virtual environment:
-```powershell
 .venv\Scripts\Activate.ps1
 ```
-*(If PowerShell displays an execution policy error, see the [Troubleshooting](#troubleshooting-common-issues-on-windows) section).*
+*(If PowerShell displays a script execution policy restriction, run: `Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass` then run the activate command again).*
+
+**On macOS / Linux:**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
 ### 4. Install Required Packages
-```powershell
+```bash
 python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 5. Setup and Configure MySQL
-1. Ensure your MySQL server is running (via MySQL Windows Service, MySQL Workbench, or the XAMPP Control Panel).
-2. Note your MySQL port (default is `3306`), username (typically `root`), and password.
+1. Ensure your MySQL or MariaDB server is active and listening on port `3306` (via Windows Services `services.msc`, MySQL Workbench, or the XAMPP Control Panel).
+2. Note your database username (default `root`) and password.
 
 ### 6. Configure Environment Variables (.env)
-A default `.env` file is included. Open `.env` in VS Code and adjust your database password if necessary:
+Copy the template configuration file `.env.example` to create your local `.env`:
+```powershell
+# Windows PowerShell:
+Copy-Item .env.example .env
+
+# macOS / Linux:
+cp .env.example .env
+```
+
+Open `.env` in your editor and adjust your database connection credentials if needed:
 ```ini
 DB_HOST=localhost
 DB_PORT=3306
@@ -238,30 +296,36 @@ CURRENCY_SYMBOL=$
 ```
 
 ### 7. Seed Starter Departments and Sample Employees
-Run the automated seeder script:
-```powershell
+Initialize the schema and seed initial administrative credentials, business units, and sample employee records:
+```bash
 python seed.py
 ```
-This script will:
-- Create the `employee_db` database and all required tables.
-- Seed the default administrator account:
+This automated script will:
+- Create the `employee_db` database and all relational tables with foreign keys and indexes.
+- Seed the default administrator credentials:
   - **Username**: `admin`
   - **Password**: `Admin@Password123`
 - Seed 6 starter departments (Engineering, HR, Marketing, Finance, Sales, Operations).
-- Seed 13 realistic employee records with varied dates, salaries, and statuses.
+- Seed 13 realistic employee records with varied salaries, dates, and statuses.
+
+Alternatively, you can initialize and seed using the Flask CLI commands:
+```bash
+flask init-db
+flask seed-db
+```
 
 ### 8. Launch the Flask Server
-Start the local development server:
-```powershell
+Start the development server:
+```bash
 python app.py
 ```
 Or via the Flask CLI:
-```powershell
+```bash
 flask run
 ```
 
 ### 9. Access the Application
-Open your web browser and navigate to:
+Open your browser and navigate to:
 ```
 http://127.0.0.1:5000
 ```
