@@ -1,0 +1,25 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Internal Server Error (500){% endblock %}
+{% block page_title %}Error 500{% endblock %}
+{% block page_subtitle %}An unexpected error occurred while processing your request{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="empty-state-box py-12">
+        <div class="error-badge-icon text-danger">
+            <i data-lucide="alert-octagon"></i>
+        </div>
+        <h2 class="empty-state-title mt-4">Internal Server Error</h2>
+        <p class="empty-state-desc max-w-md">
+            Something went wrong on the server. The error has been logged for review. Please try again or return to the dashboard.
+        </p>
+        <div class="mt-6">
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-primary">
+                <i data-lucide="home"></i>
+                <span>Back to Dashboard</span>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

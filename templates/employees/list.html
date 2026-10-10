@@ -1,0 +1,304 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Employee Roster{% endblock %}
+{% block page_title %}Employee Management{% endblock %}
+{% block page_subtitle %}Search, filter, manage, and analyze employee records{% endblock %}
+
+{% block content %}
+<!-- Search & Filter Bar Card -->
+<div class="card filter-card mb-6">
+    <div class="card-body">
+        <form action="{{ url_for('employees.list_employees') }}" method="GET" class="filter-form" id="filterForm">
+            <!-- Search Text -->
+            <div class="filter-group flex-2">
+                <label for="search" class="filter-label">Search Query</label>
+                <div class="input-with-icon">
+                    <i data-lucide="search" class="input-icon"></i>
+                    <input type="text" id="search" name="search" value="{{ current_search }}"
+                           placeholder="Search by ID, name, email, or job title..." class="form-control">
+                </div>
+            </div>
+
+            <!-- Department Filter -->
+            <div class="filter-group flex-1">
+                <label for="department" class="filter-label">Department</label>
+                <select id="department" name="department" class="form-control">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept.id }}" {% if current_dept == dept.id|string %}selected{% endif %}>
+                            {{ dept.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div class="filter-group flex-1">
+                <label for="status" class="filter-label">Status</label>
+                <select id="status" name="status" class="form-control">
+                    <option value="">All Statuses</option>
+                    <option value="Active" {% if current_status == 'Active' %}selected{% endif %}>Active</option>
+                    <option value="Inactive" {% if current_status == 'Inactive' %}selected{% endif %}>Inactive</option>
+                </select>
+            </div>
+
+            <!-- Joining Date Range -->
+            <div class="filter-group flex-1">
+                <label for="start_date" class="filter-label">Joined From</label>
+                <input type="date" id="start_date" name="start_date" class="form-control" value="{{ current_start_date }}">
+            </div>
+
+            <div class="filter-group flex-1">
+                <label for="end_date" class="filter-label">Joined Until</label>
+                <input type="date" id="end_date" name="end_date" class="form-control" value="{{ current_end_date }}">
+            </div>
+
+            <!-- Sort Column -->
+            <div class="filter-group flex-1">
+                <label for="sort_by" class="filter-label">Sort By</label>
+                <select id="sort_by" name="sort_by" class="form-control">
+                    <option value="id" {% if current_sort_by == 'id' %}selected{% endif %}>ID</option>
+                    <option value="full_name" {% if current_sort_by in ['full_name', 'name'] %}selected{% endif %}>Name</option>
+                    <option value="joining_date" {% if current_sort_by == 'joining_date' %}selected{% endif %}>Joining Date</option>
+                    <option value="salary" {% if current_sort_by == 'salary' %}selected{% endif %}>Salary</option>
+                </select>
+            </div>
+
+            <!-- Sort Order -->
+            <div class="filter-group" style="min-width: 90px;">
+                <label for="sort_order" class="filter-label">Order</label>
+                <select id="sort_order" name="sort_order" class="form-control">
+                    <option value="desc" {% if current_sort_order == 'desc' %}selected{% endif %}>Desc</option>
+                    <option value="asc" {% if current_sort_order == 'asc' %}selected{% endif %}>Asc</option>
+                </select>
+            </div>
+
+            <!-- Filter Buttons -->
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary" title="Apply Filters">
+                    <i data-lucide="filter"></i>
+                    <span>Apply</span>
+                </button>
+                {% if current_search or current_dept or current_status or current_start_date or current_end_date or current_sort_by != 'id' or current_sort_order != 'desc' %}
+                    <a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline" title="Clear Filters">
+                        <i data-lucide="rotate-ccw"></i>
+                        <span>Reset</span>
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Employees Table Card -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-header-title">
+            <i data-lucide="list"></i>
+            <h3>Staff Records</h3>
+            <span class="badge badge-primary">{{ pagination.total }} Total</span>
+        </div>
+        <div class="card-actions">
+            <!-- CSV Export with current filters -->
+            <a href="{{ url_for('reports.export_employees', search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by=current_sort_by, sort_order=current_sort_order) }}" class="btn btn-outline btn-sm">
+                <i data-lucide="download"></i>
+                <span>Export CSV</span>
+            </a>
+            <a href="{{ url_for('employees.add') }}" class="btn btn-primary btn-sm">
+                <i data-lucide="user-plus"></i>
+                <span>Add Employee</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="card-body p-0">
+        {% if employees %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>
+                                <a href="{{ url_for('employees.list_employees', search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by='id', sort_order='asc' if current_sort_by == 'id' and current_sort_order == 'desc' else 'desc') }}" class="table-sort-link">
+                                    ID {% if current_sort_by == 'id' %}{{ '↓' if current_sort_order == 'desc' else '↑' }}{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('employees.list_employees', search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by='full_name', sort_order='asc' if current_sort_by in ['full_name', 'name'] and current_sort_order == 'desc' else 'desc') }}" class="table-sort-link">
+                                    Employee Name {% if current_sort_by in ['full_name', 'name'] %}{{ '↓' if current_sort_order == 'desc' else '↑' }}{% endif %}
+                                </a>
+                            </th>
+                            <th>Contact Info</th>
+                            <th>Department</th>
+                            <th>Job Title</th>
+                            <th>
+                                <a href="{{ url_for('employees.list_employees', search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by='joining_date', sort_order='asc' if current_sort_by == 'joining_date' and current_sort_order == 'desc' else 'desc') }}" class="table-sort-link">
+                                    Joining Date {% if current_sort_by == 'joining_date' %}{{ '↓' if current_sort_order == 'desc' else '↑' }}{% endif %}
+                                </a>
+                            </th>
+                            <th>
+                                <a href="{{ url_for('employees.list_employees', search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by='salary', sort_order='asc' if current_sort_by == 'salary' and current_sort_order == 'desc' else 'desc') }}" class="table-sort-link">
+                                    Salary {% if current_sort_by == 'salary' %}{{ '↓' if current_sort_order == 'desc' else '↑' }}{% endif %}
+                                </a>
+                            </th>
+                            <th>Status</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in employees %}
+                            <tr>
+                                <td><span class="id-badge">#EMP-{{ "%04d"|format(emp.id) }}</span></td>
+                                <td>
+                                    <div class="table-user-cell">
+                                        <div class="user-avatar-sm">{{ emp.full_name[:2].upper() }}</div>
+                                        <div class="user-details">
+                                            <a href="{{ url_for('employees.detail', emp_id=emp.id) }}" class="user-name-link">{{ emp.full_name }}</a>
+                                            <span class="user-subtext">{{ emp.job_title }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <div class="contact-cell">
+                                        <span class="contact-item"><i data-lucide="mail"></i> {{ emp.email }}</span>
+                                        {% if emp.phone %}
+                                            <span class="contact-item text-muted"><i data-lucide="phone"></i> {{ emp.phone }}</span>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                                <td><span class="dept-tag">{{ emp.department_name }}</span></td>
+                                <td>{{ emp.job_title }}</td>
+                                <td>{{ emp.joining_date | format_date }}</td>
+                                <td class="font-medium">{{ emp.salary | currency }}</td>
+                                <td>
+                                    <span class="status-pill status-{{ emp.status|lower }}">{{ emp.status }}</span>
+                                </td>
+                                <td class="text-right">
+                                    <div class="table-actions">
+                                        <a href="{{ url_for('employees.detail', emp_id=emp.id) }}" class="btn-icon" title="View Details">
+                                            <i data-lucide="eye"></i>
+                                        </a>
+                                        <a href="{{ url_for('employees.edit', emp_id=emp.id) }}" class="btn-icon" title="Edit Employee">
+                                            <i data-lucide="edit-2"></i>
+                                        </a>
+                                        <button type="button" class="btn-icon text-danger" title="Delete Employee"
+                                                onclick="confirmDelete('{{ emp.id }}', '{{ emp.full_name | escape }}')">
+                                            <i data-lucide="trash-2"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Server-Side Pagination Bar -->
+            {% if pagination.total_pages > 1 %}
+                <div class="pagination-wrapper">
+                    <div class="pagination-info">
+                        Showing page {{ pagination.page }} of {{ pagination.total_pages }} ({{ pagination.total }} records)
+                    </div>
+                    <div class="pagination-controls">
+                        {% if pagination.has_prev %}
+                            <a href="{{ url_for('employees.list_employees', page=pagination.prev_num, search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by=current_sort_by, sort_order=current_sort_order) }}" class="btn-pagination">
+                                <i data-lucide="chevron-left"></i> Previous
+                            </a>
+                        {% else %}
+                            <span class="btn-pagination disabled">
+                                <i data-lucide="chevron-left"></i> Previous
+                            </span>
+                        {% endif %}
+
+                        <div class="pagination-pages">
+                            {% for p in range(1, pagination.total_pages + 1) %}
+                                {% if p == pagination.page %}
+                                    <span class="page-num active">{{ p }}</span>
+                                {% elif p == 1 or p == pagination.total_pages or (p >= pagination.page - 2 and p <= pagination.page + 2) %}
+                                    <a href="{{ url_for('employees.list_employees', page=p, search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by=current_sort_by, sort_order=current_sort_order) }}" class="page-num">{{ p }}</a>
+                                {% elif p == pagination.page - 3 or p == pagination.page + 3 %}
+                                    <span class="page-ellipsis">&hellip;</span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+
+                        {% if pagination.has_next %}
+                            <a href="{{ url_for('employees.list_employees', page=pagination.next_num, search=current_search, department=current_dept, status=current_status, start_date=current_start_date, end_date=current_end_date, sort_by=current_sort_by, sort_order=current_sort_order) }}" class="btn-pagination">
+                                Next <i data-lucide="chevron-right"></i>
+                            </a>
+                        {% else %}
+                            <span class="btn-pagination disabled">
+                                Next <i data-lucide="chevron-right"></i>
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
+        {% else %}
+            <div class="empty-state-box">
+                <i data-lucide="search-x" class="empty-state-icon"></i>
+                <p class="empty-state-title">No Matching Employees Found</p>
+                <p class="empty-state-desc">
+                    {% if current_search or current_dept or current_status or current_start_date or current_end_date %}
+                        No employee records matched your filter criteria. Try adjusting or clearing your search filters.
+                    {% else %}
+                        Your employee directory is empty. Add a new team member to get started.
+                    {% endif %}
+                </p>
+                {% if current_search or current_dept or current_status or current_start_date or current_end_date %}
+                    <a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline mt-4">
+                        <i data-lucide="rotate-ccw"></i>
+                        <span>Clear All Filters</span>
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('employees.add') }}" class="btn btn-primary mt-4">
+                        <i data-lucide="user-plus"></i>
+                        <span>Add First Employee</span>
+                    </a>
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal Dialog -->
+<div class="modal-backdrop" id="deleteModalBackdrop">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div class="modal-title-wrapper text-danger">
+                <i data-lucide="alert-triangle"></i>
+                <h4>Confirm Employee Deletion</h4>
+            </div>
+            <button type="button" class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete employee record <strong id="deleteEmpName"></strong>?</p>
+            <p class="text-sm text-muted mt-2">This action is irreversible and will permanently remove this employee from the database.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+            <form id="deleteForm" method="POST" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">
+                    <i data-lucide="trash-2"></i>
+                    <span>Permanently Delete</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete(id, name) {
+        document.getElementById('deleteEmpName').textContent = name + ' (#' + id + ')';
+        document.getElementById('deleteForm').action = '/employees/' + id + '/delete';
+        document.getElementById('deleteModalBackdrop').classList.add('show');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModalBackdrop').classList.remove('show');
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,174 @@
+﻿{% extends "base.html" %}
+
+{% block title %}{{ employee.full_name }} - Profile{% endblock %}
+{% block page_title %}Employee Profile{% endblock %}
+{% block page_subtitle %}Detailed personnel record for {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Header Action Bar -->
+    <div class="profile-header-actions mb-4">
+        <a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline btn-sm">
+            <i data-lucide="arrow-left"></i>
+            <span>Back to Roster</span>
+        </a>
+        <div class="actions-group">
+            <a href="{{ url_for('employees.edit', emp_id=employee.id) }}" class="btn btn-primary btn-sm">
+                <i data-lucide="edit-2"></i>
+                <span>Edit Profile</span>
+            </a>
+            <button type="button" class="btn btn-danger btn-sm"
+                    onclick="confirmDelete('{{ employee.id }}', '{{ employee.full_name | escape }}')">
+                <i data-lucide="trash-2"></i>
+                <span>Delete Record</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Profile Hero Card -->
+    <div class="card profile-hero-card mb-6">
+        <div class="card-body">
+            <div class="profile-hero-content">
+                <div class="profile-avatar-lg">
+                    {{ employee.full_name[:2].upper() }}
+                </div>
+                <div class="profile-hero-meta">
+                    <div class="profile-title-row">
+                        <h2 class="profile-name">{{ employee.full_name }}</h2>
+                        <span class="status-pill status-{{ employee.status|lower }}">{{ employee.status }}</span>
+                    </div>
+                    <p class="profile-job-title">{{ employee.job_title }} &bull; <span class="text-blue">{{ employee.department_name }}</span></p>
+                    <div class="profile-badges-row">
+                        <span class="id-badge">ID: #EMP-{{ "%04d"|format(employee.id) }}</span>
+                        <span class="info-tag"><i data-lucide="calendar"></i> Joined {{ employee.joining_date | format_date }}</span>
+                        <span class="info-tag"><i data-lucide="dollar-sign"></i> {{ employee.salary | currency }} / year</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Details Grid -->
+    <div class="profile-details-grid">
+        <!-- Contact & Location Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-title">
+                    <i data-lucide="contact"></i>
+                    <h3>Contact Information</h3>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="detail-list">
+                    <div class="detail-item">
+                        <span class="detail-label"><i data-lucide="mail"></i> Email Address</span>
+                        <span class="detail-value">
+                            <a href="mailto:{{ employee.email }}" class="text-blue">{{ employee.email }}</a>
+                        </span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label"><i data-lucide="phone"></i> Phone Number</span>
+                        <span class="detail-value">{{ employee.phone if employee.phone else 'Not provided' }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label"><i data-lucide="map-pin"></i> Residential Address</span>
+                        <span class="detail-value">{{ employee.address if employee.address else 'Not provided' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Employment & Department Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-header-title">
+                    <i data-lucide="briefcase"></i>
+                    <h3>Employment &amp; Position</h3>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="detail-list">
+                    <div class="detail-item">
+                        <span class="detail-label"><i data-lucide="network"></i> Department</span>
+                        <span class="detail-value">
+                            <span class="dept-tag">{{ employee.department_name }}</span>
+                        </span>
+                    </div>
+                    {% if employee.department_description %}
+                        <div class="detail-item">
+                            <span class="detail-label"><i data-lucide="info"></i> Department Scope</span>
+                            <span class="detail-value text-muted text-sm">{{ employee.department_description }}</span>
+                        </div>
+                    {% endif %}
+                    <div class="detail-item">
+                        <span class="detail-label"><i data-lucide="badge-check"></i> Job Title</span>
+                        <span class="detail-value font-medium">{{ employee.job_title }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label"><i data-lucide="calendar-check"></i> Onboarding Date</span>
+                        <span class="detail-value">{{ employee.joining_date | format_date }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label"><i data-lucide="wallet"></i> Annual Compensation</span>
+                        <span class="detail-value font-semibold text-success">{{ employee.salary | currency }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Audit Metadata Card -->
+    <div class="card mt-6">
+        <div class="card-body py-3">
+            <div class="audit-footer-row">
+                <span><i data-lucide="shield-check"></i> Record verified in database</span>
+                <span>Created: {{ employee.created_at | format_date }}</span>
+                {% if employee.updated_at %}
+                    <span>Last Modified: {{ employee.updated_at | format_date }}</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal Dialog -->
+<div class="modal-backdrop" id="deleteModalBackdrop">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div class="modal-title-wrapper text-danger">
+                <i data-lucide="alert-triangle"></i>
+                <h4>Confirm Employee Deletion</h4>
+            </div>
+            <button type="button" class="modal-close" onclick="closeDeleteModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p>Are you sure you want to delete employee record <strong id="deleteEmpName"></strong>?</p>
+            <p class="text-sm text-muted mt-2">This action is irreversible and will permanently remove this employee from the database.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeDeleteModal()">Cancel</button>
+            <form id="deleteForm" method="POST" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger">
+                    <i data-lucide="trash-2"></i>
+                    <span>Permanently Delete</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function confirmDelete(id, name) {
+        document.getElementById('deleteEmpName').textContent = name + ' (#' + id + ')';
+        document.getElementById('deleteForm').action = '/employees/' + id + '/delete';
+        document.getElementById('deleteModalBackdrop').classList.add('show');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteModalBackdrop').classList.remove('show');
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,153 @@
+﻿{% extends "base.html" %}
+
+{% block title %}System Settings &amp; Diagnostics{% endblock %}
+{% block page_title %}Settings &amp; Diagnostics{% endblock %}
+{% block page_subtitle %}System health checks, database connectivity, and interface preferences{% endblock %}
+
+{% block content %}
+<div class="settings-grid">
+    <!-- Database Connection Health Card -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-header-title">
+                <i data-lucide="database"></i>
+                <h3>Database Connectivity Health</h3>
+            </div>
+            {% if is_healthy %}
+                <span class="badge badge-success"><i data-lucide="check"></i> Connected</span>
+            {% else %}
+                <span class="badge badge-danger"><i data-lucide="alert-circle"></i> Offline</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="detail-list">
+                <div class="detail-item">
+                    <span class="detail-label">Connection Status</span>
+                    <span class="detail-value font-medium {% if is_healthy %}text-success{% else %}text-danger{% endif %}">
+                        {{ db_info.status }}
+                    </span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Database Target</span>
+                    <span class="detail-value"><code>{{ db_info.database }}</code></span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Host &amp; Port</span>
+                    <span class="detail-value">{{ db_info.host }}</span>
+                </div>
+                {% if is_healthy %}
+                    <div class="detail-item">
+                        <span class="detail-label">MySQL Server Version</span>
+                        <span class="detail-value">{{ db_info.version }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Initialized Tables</span>
+                        <span class="detail-value">
+                            {{ db_info.tables | join(', ') if db_info.tables else 'None' }}
+                        </span>
+                    </div>
+                {% else %}
+                    <div class="detail-item">
+                        <span class="detail-label">Error Code</span>
+                        <span class="detail-value text-danger">{{ db_info.error_code }}</span>
+                    </div>
+                    <div class="detail-item">
+                        <span class="detail-label">Diagnostic Message</span>
+                        <span class="detail-value text-danger text-sm">{{ db_info.error_message }}</span>
+                    </div>
+                    <div class="alert alert-warning mt-4">
+                        <div class="alert-icon"><i data-lucide="help-circle"></i></div>
+                        <div class="alert-content">
+                            <strong>Setup Help:</strong> {{ db_info.troubleshooting }}
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Environment Card -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-header-title">
+                <i data-lucide="server"></i>
+                <h3>Application Environment</h3>
+            </div>
+            <span class="badge badge-primary">Flask 3</span>
+        </div>
+        <div class="card-body">
+            <div class="detail-list">
+                <div class="detail-item">
+                    <span class="detail-label">Python Interpreter</span>
+                    <span class="detail-value">Python {{ sys_info.python_version }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Flask Framework</span>
+                    <span class="detail-value">v{{ sys_info.flask_version }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Operating System</span>
+                    <span class="detail-value">{{ sys_info.os_name }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Environment Mode</span>
+                    <span class="detail-value">{{ sys_info.app_env }}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Flask Debug Mode</span>
+                    <span class="detail-value font-medium {% if sys_info.debug_mode %}text-amber{% else %}text-muted{% endif %}">
+                        {{ 'Enabled (Development)' if sys_info.debug_mode else 'Disabled (Production)' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Display Preferences Form Card -->
+    <div class="card span-2">
+        <div class="card-header">
+            <div class="card-header-title">
+                <i data-lucide="sliders"></i>
+                <h3>Interface &amp; Display Preferences</h3>
+            </div>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('settings.index') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="currency_symbol" class="form-label">Currency Symbol</label>
+                        <select id="currency_symbol" name="currency_symbol" class="form-control">
+                            <option value="$" {% if sys_info.currency_symbol == '$' %}selected{% endif %}>$ (USD / AUD / CAD)</option>
+                            <option value="€" {% if sys_info.currency_symbol == '€' %}selected{% endif %}>€ (EUR - Euro)</option>
+                            <option value="£" {% if sys_info.currency_symbol == '£' %}selected{% endif %}>£ (GBP - British Pound)</option>
+                            <option value="₹" {% if sys_info.currency_symbol == '₹' %}selected{% endif %}>₹ (INR - Indian Rupee)</option>
+                            <option value="¥" {% if sys_info.currency_symbol == '¥' %}selected{% endif %}>¥ (JPY / CNY)</option>
+                        </select>
+                        <span class="text-xs text-muted mt-1">Controls monetary symbol across dashboard and reports.</span>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="items_per_page" class="form-label">Table Page Size</label>
+                        <select id="items_per_page" name="items_per_page" class="form-control">
+                            <option value="5" {% if sys_info.items_per_page == 5 %}selected{% endif %}>5 rows per page</option>
+                            <option value="10" {% if sys_info.items_per_page == 10 %}selected{% endif %}>10 rows per page (Default)</option>
+                            <option value="20" {% if sys_info.items_per_page == 20 %}selected{% endif %}>20 rows per page</option>
+                            <option value="50" {% if sys_info.items_per_page == 50 %}selected{% endif %}>50 rows per page</option>
+                        </select>
+                        <span class="text-xs text-muted mt-1">Controls pagination batch size on the employee roster.</span>
+                    </div>
+                </div>
+
+                <div class="form-actions mt-6">
+                    <button type="submit" class="btn btn-primary">
+                        <i data-lucide="check"></i>
+                        <span>Apply Preferences</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

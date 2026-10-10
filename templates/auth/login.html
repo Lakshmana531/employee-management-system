@@ -1,0 +1,94 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administrator Sign In - EMS Portal</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+    <div class="auth-card-wrapper">
+        <div class="card auth-card">
+            <div class="auth-header">
+                <div class="auth-brand-icon">
+                    <i data-lucide="building-2"></i>
+                </div>
+                <h2>EMS Portal</h2>
+                <p>Enterprise Employee Management System</p>
+            </div>
+
+            <!-- Flash Alerts -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="alerts-container mb-4">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}" role="alert">
+                                <div class="alert-icon">
+                                    {% if category == 'success' %}
+                                        <i data-lucide="check-circle-2"></i>
+                                    {% elif category == 'danger' %}
+                                        <i data-lucide="alert-octagon"></i>
+                                    {% else %}
+                                        <i data-lucide="info"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="alert-content">{{ message }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <form action="{{ url_for('auth.login', next=request.args.get('next')) }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group mb-4">
+                    <label for="username_or_email" class="form-label required">Username or Email</label>
+                    <div class="input-with-icon">
+                        <i data-lucide="user" class="input-icon"></i>
+                        <input type="text" id="username_or_email" name="username_or_email"
+                               class="form-control" value="{{ identifier if identifier else '' }}"
+                               placeholder="e.g., admin or admin@ems.local" required autofocus>
+                    </div>
+                </div>
+
+                <div class="form-group mb-6">
+                    <label for="password" class="form-label required">Password</label>
+                    <div class="input-with-icon">
+                        <i data-lucide="lock" class="input-icon"></i>
+                        <input type="password" id="password" name="password"
+                               class="form-control" placeholder="Enter administrator password" required>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i data-lucide="log-in"></i>
+                    <span>Sign In to Dashboard</span>
+                </button>
+            </form>
+
+            <div class="auth-footer mt-6">
+                <div class="demo-credentials-box">
+                    <span class="text-xs text-muted font-semibold">DEFAULT LOCAL CREDENTIALS</span>
+                    <div class="credentials-row">
+                        <span>User: <code>admin</code></span>
+                        <span>Pass: <code>Admin@Password123</code></span>
+                    </div>
+                    <span class="text-xs text-muted">Created automatically when running <code>python seed.py</code></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

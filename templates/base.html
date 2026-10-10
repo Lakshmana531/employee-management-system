@@ -1,0 +1,166 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %} - EMS Portal</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body class="app-body">
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar" id="appSidebar">
+            <div class="sidebar-brand">
+                <div class="brand-icon">
+                    <i data-lucide="building-2"></i>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">EMS Portal</span>
+                    <span class="brand-subtitle">Enterprise HR</span>
+                </div>
+                <button class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close Sidebar">
+                    <i data-lucide="x"></i>
+                </button>
+            </div>
+
+            <nav class="sidebar-menu">
+                <div class="menu-section-title">MAIN MENU</div>
+                <a href="{{ url_for('dashboard.index') }}" class="nav-item {% if active_path in ['/', '/dashboard'] %}active{% endif %}">
+                    <i data-lucide="layout-dashboard"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="{{ url_for('employees.list_employees') }}" class="nav-item {% if active_path == '/employees' or (active_path.startswith('/employees') and not active_path.startswith('/employees/add')) %}active{% endif %}">
+                    <i data-lucide="users"></i>
+                    <span>Employees</span>
+                </a>
+                <a href="{{ url_for('employees.add') }}" class="nav-item {% if active_path == '/employees/add' %}active{% endif %}">
+                    <i data-lucide="user-plus"></i>
+                    <span>Add Employee</span>
+                </a>
+                <a href="{{ url_for('departments.index') }}" class="nav-item {% if active_path.startswith('/departments') %}active{% endif %}">
+                    <i data-lucide="network"></i>
+                    <span>Departments</span>
+                </a>
+                <a href="{{ url_for('reports.index') }}" class="nav-item {% if active_path.startswith('/reports') %}active{% endif %}">
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Reports</span>
+                </a>
+
+                <div class="menu-section-title">SYSTEM</div>
+                <a href="{{ url_for('settings.index') }}" class="nav-item {% if active_path.startswith('/settings') %}active{% endif %}">
+                    <i data-lucide="settings"></i>
+                    <span>Settings & Status</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile-badge">
+                    <div class="avatar-circle">
+                        {{ current_user.initials if current_user else 'AD' }}
+                    </div>
+                    <div class="user-meta">
+                        <span class="user-name">{{ current_user.full_name if current_user else 'Administrator' }}</span>
+                        <span class="user-role">System Admin</span>
+                    </div>
+                    <form action="{{ url_for('auth.logout') }}" method="POST" style="margin-left: auto;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="logout-btn" title="Sign Out">
+                            <i data-lucide="log-out"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Sidebar Backdrop for Mobile -->
+        <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+        <!-- Main Content Area -->
+        <div class="app-main">
+            <!-- Top Navbar -->
+            <header class="app-header">
+                <div class="header-left">
+                    <button class="mobile-toggle-btn" id="mobileToggleBtn" aria-label="Toggle Navigation">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div class="page-header-info">
+                        <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                        <p class="page-desc">{% block page_subtitle %}Overview and live metrics{% endblock %}</p>
+                    </div>
+                </div>
+
+                <div class="header-right">
+                    <!-- Quick Global Search Bar -->
+                    <form action="{{ url_for('employees.list_employees') }}" method="GET" class="header-search-form">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <input type="text" name="search" placeholder="Search employees by name, email, or ID..." class="header-search-input" value="{{ request.args.get('search', '') }}">
+                    </form>
+
+                    <!-- Quick Add Action -->
+                    <a href="{{ url_for('employees.add') }}" class="btn btn-primary btn-sm">
+                        <i data-lucide="plus"></i>
+                        <span>New Employee</span>
+                    </a>
+                </div>
+            </header>
+
+            <!-- Alerts / Toast Messages -->
+            <div class="alerts-container">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ category }}" role="alert">
+                                <div class="alert-icon">
+                                    {% if category == 'success' %}
+                                        <i data-lucide="check-circle-2"></i>
+                                    {% elif category == 'danger' %}
+                                        <i data-lucide="alert-octagon"></i>
+                                    {% elif category == 'warning' %}
+                                        <i data-lucide="alert-triangle"></i>
+                                    {% else %}
+                                        <i data-lucide="info"></i>
+                                    {% endif %}
+                                </div>
+                                <div class="alert-content">{{ message }}</div>
+                                <button class="alert-dismiss" onclick="this.parentElement.remove()" aria-label="Close">
+                                    <i data-lucide="x"></i>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% endwith %}
+            </div>
+
+            <!-- Page Body Content -->
+            <main class="content-wrapper">
+                {% block content %}{% endblock %}
+            </main>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                <div class="footer-content">
+                    <span>Employee Management System (EMS) &bull; Built with Flask &amp; MySQL</span>
+                    <span class="footer-version">v1.0.0 Production Ready</span>
+                </div>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,226 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Departments Management{% endblock %}
+{% block page_title %}Departments Directory{% endblock %}
+{% block page_subtitle %}Manage company business units, structures, and assigned personnel{% endblock %}
+
+{% block content %}
+<div class="departments-layout">
+    <!-- Top Action Bar -->
+    <div class="departments-header mb-6">
+        <div class="departments-header-stats">
+            <span class="badge badge-primary">{{ departments|length }} Active Units</span>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="openAddDeptModal()">
+            <i data-lucide="folder-plus"></i>
+            <span>Add New Department</span>
+        </button>
+    </div>
+
+    <!-- Departments Grid -->
+    <div class="departments-grid">
+        {% for dept in departments %}
+            <div class="card department-card">
+                <div class="card-header">
+                    <div class="card-header-title">
+                        <div class="dept-avatar">
+                            <i data-lucide="network"></i>
+                        </div>
+                        <div>
+                            <h3 class="dept-title">{{ dept.name }}</h3>
+                            <span class="text-xs text-muted">ID: #DEPT-{{ "%03d"|format(dept.id) }}</span>
+                        </div>
+                    </div>
+                    <div class="table-actions">
+                        <button type="button" class="btn-icon" title="Rename Department"
+                                onclick="openEditDeptModal('{{ dept.id }}', '{{ dept.name | escape }}', '{{ (dept.description or '') | escape }}')">
+                            <i data-lucide="edit-2"></i>
+                        </button>
+                        <button type="button" class="btn-icon text-danger" title="Delete Department"
+                                onclick="openDeleteDeptModal('{{ dept.id }}', '{{ dept.name | escape }}', {{ dept.employee_count }})">
+                            <i data-lucide="trash-2"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card-body">
+                    <p class="dept-description">
+                        {{ dept.description if dept.description else 'No organizational description provided.' }}
+                    </p>
+
+                    <div class="dept-stats-row mt-4">
+                        <div class="dept-stat">
+                            <span class="stat-number">{{ dept.employee_count }}</span>
+                            <span class="stat-label">Employees Assigned</span>
+                        </div>
+                        <a href="{{ url_for('employees.list_employees', department=dept.id) }}" class="btn btn-outline btn-sm" title="View Team Members">
+                            <span>View Roster</span>
+                            <i data-lucide="arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="card span-full">
+                <div class="empty-state-box">
+                    <i data-lucide="network" class="empty-state-icon"></i>
+                    <p class="empty-state-title">No Departments Registered</p>
+                    <p class="empty-state-desc">Organize your organization by adding departments or running the seed script.</p>
+                    <button type="button" class="btn btn-primary mt-4" onclick="openAddDeptModal()">
+                        <i data-lucide="plus"></i>
+                        <span>Create First Department</span>
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal 1: Add Department -->
+<div class="modal-backdrop" id="addDeptModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div class="modal-title-wrapper">
+                <i data-lucide="folder-plus"></i>
+                <h4>Add New Department</h4>
+            </div>
+            <button type="button" class="modal-close" onclick="closeAddDeptModal()">&times;</button>
+        </div>
+        <form action="{{ url_for('departments.add') }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <div class="form-group mb-4">
+                    <label for="add_name" class="form-label required">Department Name</label>
+                    <input type="text" id="add_name" name="name" class="form-control" placeholder="e.g., Marketing & Growth" required>
+                </div>
+                <div class="form-group">
+                    <label for="add_desc" class="form-label">Scope / Description</label>
+                    <textarea id="add_desc" name="description" rows="3" class="form-control" placeholder="Brief outline of responsibilities..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeAddDeptModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="check"></i>
+                    <span>Create Department</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 2: Edit Department -->
+<div class="modal-backdrop" id="editDeptModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div class="modal-title-wrapper">
+                <i data-lucide="edit-3"></i>
+                <h4>Modify Department</h4>
+            </div>
+            <button type="button" class="modal-close" onclick="closeEditDeptModal()">&times;</button>
+        </div>
+        <form id="editDeptForm" method="POST" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="modal-body">
+                <div class="form-group mb-4">
+                    <label for="edit_name" class="form-label required">Department Name</label>
+                    <input type="text" id="edit_name" name="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="edit_desc" class="form-label">Scope / Description</label>
+                    <textarea id="edit_desc" name="description" rows="3" class="form-control"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline" onclick="closeEditDeptModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="save"></i>
+                    <span>Save Changes</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Modal 3: Delete Department -->
+<div class="modal-backdrop" id="deleteDeptModal">
+    <div class="modal-dialog">
+        <div class="modal-header">
+            <div class="modal-title-wrapper text-danger">
+                <i data-lucide="alert-triangle"></i>
+                <h4>Confirm Department Deletion</h4>
+            </div>
+            <button type="button" class="modal-close" onclick="closeDeleteDeptModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="deleteAllowedNotice">
+                <p>Are you sure you want to delete department <strong id="deleteDeptName"></strong>?</p>
+                <p class="text-sm text-muted mt-2">This department has 0 assigned employees and can be safely removed.</p>
+            </div>
+            <div id="deleteBlockedNotice" style="display:none;" class="alert alert-warning">
+                <div class="alert-icon"><i data-lucide="alert-triangle"></i></div>
+                <div class="alert-content">
+                    <strong>Deletion Restricted:</strong> Department <strong id="deleteBlockedDeptName"></strong> currently has <span id="deleteBlockedCount"></span> assigned employee(s).
+                    <p class="text-xs mt-1">To maintain data integrity, you must reassign or remove all employees before deleting this department.</p>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-outline" onclick="closeDeleteDeptModal()">Cancel</button>
+            <form id="deleteDeptForm" method="POST" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" id="deleteDeptSubmitBtn" class="btn btn-danger">
+                    <i data-lucide="trash-2"></i>
+                    <span>Delete Department</span>
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function openAddDeptModal() {
+        document.getElementById('addDeptModal').classList.add('show');
+    }
+    function closeAddDeptModal() {
+        document.getElementById('addDeptModal').classList.remove('show');
+    }
+
+    function openEditDeptModal(id, name, desc) {
+        document.getElementById('editDeptForm').action = '/departments/' + id + '/edit';
+        document.getElementById('edit_name').value = name;
+        document.getElementById('edit_desc').value = desc;
+        document.getElementById('editDeptModal').classList.add('show');
+    }
+    function closeEditDeptModal() {
+        document.getElementById('editDeptModal').classList.remove('show');
+    }
+
+    function openDeleteDeptModal(id, name, count) {
+        document.getElementById('deleteDeptForm').action = '/departments/' + id + '/delete';
+        const allowedBox = document.getElementById('deleteAllowedNotice');
+        const blockedBox = document.getElementById('deleteBlockedNotice');
+        const submitBtn = document.getElementById('deleteDeptSubmitBtn');
+
+        if (count > 0) {
+            allowedBox.style.display = 'none';
+            blockedBox.style.display = 'flex';
+            document.getElementById('deleteBlockedDeptName').textContent = name;
+            document.getElementById('deleteBlockedCount').textContent = count;
+            submitBtn.style.display = 'none'; // Prevent deletion submission
+        } else {
+            allowedBox.style.display = 'block';
+            blockedBox.style.display = 'none';
+            document.getElementById('deleteDeptName').textContent = name;
+            submitBtn.style.display = 'inline-flex';
+        }
+        document.getElementById('deleteDeptModal').classList.add('show');
+        lucide.createIcons();
+    }
+    function closeDeleteDeptModal() {
+        document.getElementById('deleteDeptModal').classList.remove('show');
+    }
+</script>
+{% endblock %}

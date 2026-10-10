@@ -1,0 +1,159 @@
+﻿{% extends "base.html" %}
+
+{% block title %}Analytics &amp; Reports{% endblock %}
+{% block page_title %}Reports &amp; Workforce Analytics{% endblock %}
+{% block page_subtitle %}Aggregated compensation figures, department metrics, and filtered CSV exports{% endblock %}
+
+{% block content %}
+<!-- Top Metrics Row -->
+<div class="metrics-grid mb-6">
+    <div class="metric-card">
+        <div class="metric-icon-wrapper bg-blue-subtle text-blue">
+            <i data-lucide="calculator"></i>
+        </div>
+        <div class="metric-data">
+            <span class="metric-label">Total Annual Payroll</span>
+            <h2 class="metric-value">{{ total_payroll | currency }}</h2>
+            <span class="metric-caption">Aggregate gross workforce spend</span>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrapper bg-green-subtle text-green">
+            <i data-lucide="user-check"></i>
+        </div>
+        <div class="metric-data">
+            <span class="metric-label">Active Headcount</span>
+            <h2 class="metric-value">{{ stats.active_employees }}</h2>
+            <span class="metric-caption">{{ stats.inactive_employees }} currently inactive / terminated</span>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrapper bg-purple-subtle text-purple">
+            <i data-lucide="wallet"></i>
+        </div>
+        <div class="metric-data">
+            <span class="metric-label">Overall Average Salary</span>
+            <h2 class="metric-value">{{ stats.average_salary | currency }}</h2>
+            <span class="metric-caption">Across all organizational units</span>
+        </div>
+    </div>
+</div>
+
+<!-- Date-Range Filter & CSV Export Card -->
+<div class="card mb-6">
+    <div class="card-header">
+        <div class="card-header-title">
+            <i data-lucide="file-spreadsheet"></i>
+            <h3>Filtered Employee Data Export</h3>
+        </div>
+    </div>
+    <div class="card-body">
+        <p class="text-sm text-muted mb-4">
+            Select parameters below to generate and download a filtered CSV report. 
+            All exports include automated UTF-8 formatting and spreadsheet formula injection protection.
+        </p>
+
+        <form action="{{ url_for('reports.export_employees') }}" method="GET" class="filter-form">
+            <div class="filter-group flex-1">
+                <label for="exp_dept" class="filter-label">Filter Department</label>
+                <select id="exp_dept" name="department" class="form-control">
+                    <option value="">All Departments</option>
+                    {% for dept in departments %}
+                        <option value="{{ dept.id }}">{{ dept.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group flex-1">
+                <label for="exp_status" class="filter-label">Filter Status</label>
+                <select id="exp_status" name="status" class="form-control">
+                    <option value="">All Statuses</option>
+                    <option value="Active">Active Only</option>
+                    <option value="Inactive">Inactive Only</option>
+                </select>
+            </div>
+
+            <div class="filter-group flex-1">
+                <label for="start_date" class="filter-label">Joined From</label>
+                <input type="date" id="start_date" name="start_date" class="form-control">
+            </div>
+
+            <div class="filter-group flex-1">
+                <label for="end_date" class="filter-label">Joined Until</label>
+                <input type="date" id="end_date" name="end_date" class="form-control">
+            </div>
+
+            <div class="filter-actions">
+                <button type="submit" class="btn btn-primary">
+                    <i data-lucide="download"></i>
+                    <span>Export to CSV</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Department Compensation Summary Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-header-title">
+            <i data-lucide="table"></i>
+            <h3>Department Compensation &amp; Payroll Summary</h3>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        {% if salary_summary %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Department Name</th>
+                            <th>Headcount</th>
+                            <th>Average Salary</th>
+                            <th>Minimum Salary</th>
+                            <th>Maximum Salary</th>
+                            <th class="text-right">Total Payroll</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in salary_summary %}
+                            <tr>
+                                <td>
+                                    <strong>{{ row.department_name }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-neutral">{{ row.employee_count }} staff</span>
+                                </td>
+                                <td>{{ row.avg_salary | currency }}</td>
+                                <td>{{ row.min_salary | currency }}</td>
+                                <td>{{ row.max_salary | currency }}</td>
+                                <td class="text-right font-semibold text-blue">
+                                    {{ row.total_payroll | currency }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-total-row">
+                            <th>Total Workforce</th>
+                            <th>{{ stats.total_employees }} staff</th>
+                            <th>{{ stats.average_salary | currency }}</th>
+                            <th>-</th>
+                            <th>-</th>
+                            <th class="text-right">{{ total_payroll | currency }}</th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state-box">
+                <i data-lucide="file-question" class="empty-state-icon"></i>
+                <p class="empty-state-title">No Compensation Data Available</p>
+                <p class="empty-state-desc">Compensation summaries will calculate automatically when employees are added.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

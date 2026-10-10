@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard Overview{% endblock %}
+{% block page_title %}Executive Dashboard{% endblock %}
+{% block page_subtitle %}Live metrics, organization stats, and recent employee activity{% endblock %}
+
+{% block content %}
+<!-- KPI Metric Cards -->
+<div class="metrics-grid">
+    <div class="metric-card">
+        <div class="metric-icon-wrapper bg-blue-subtle text-blue">
+            <i data-lucide="users"></i>
+        </div>
+        <div class="metric-data">
+            <span class="metric-label">Total Workforce</span>
+            <h2 class="metric-value">{{ stats.total_employees }}</h2>
+            <span class="metric-caption">All registered personnel</span>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrapper bg-green-subtle text-green">
+            <i data-lucide="user-check"></i>
+        </div>
+        <div class="metric-data">
+            <span class="metric-label">Active Staff</span>
+            <h2 class="metric-value">{{ stats.active_employees }}</h2>
+            <span class="metric-caption">
+                {% if stats.total_employees > 0 %}
+                    {{ ((stats.active_employees / stats.total_employees) * 100) | round(1) }}% active rate
+                {% else %}
+                    0% active rate
+                {% endif %}
+            </span>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrapper bg-purple-subtle text-purple">
+            <i data-lucide="network"></i>
+        </div>
+        <div class="metric-data">
+            <span class="metric-label">Departments</span>
+            <h2 class="metric-value">{{ stats.total_departments }}</h2>
+            <span class="metric-caption">Operating business units</span>
+        </div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-icon-wrapper bg-amber-subtle text-amber">
+            <i data-lucide="wallet"></i>
+        </div>
+        <div class="metric-data">
+            <span class="metric-label">Average Compensation</span>
+            <h2 class="metric-value">{{ stats.average_salary | currency }}</h2>
+            <span class="metric-caption">Annual baseline average</span>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Section -->
+<div class="charts-grid">
+    <!-- Department Distribution Chart -->
+    <div class="card chart-card">
+        <div class="card-header">
+            <div class="card-header-title">
+                <i data-lucide="pie-chart"></i>
+                <h3>Department Headcount</h3>
+            </div>
+            <span class="badge badge-neutral">{{ stats.dept_distribution|length }} Units Active</span>
+        </div>
+        <div class="card-body">
+            {% if stats.dept_distribution %}
+                <div class="chart-container">
+                    <canvas id="deptDistributionChart"></canvas>
+                </div>
+            {% else %}
+                <div class="empty-state-box">
+                    <i data-lucide="pie-chart" class="empty-state-icon"></i>
+                    <p class="empty-state-title">No Department Distribution Data</p>
+                    <p class="empty-state-desc">Headcount charts will render here once employees are assigned to departments.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Monthly Joining Trends Chart -->
+    <div class="card chart-card">
+        <div class="card-header">
+            <div class="card-header-title">
+                <i data-lucide="trending-up"></i>
+                <h3>Hiring &amp; Onboarding Trends</h3>
+            </div>
+            <span class="badge badge-neutral">{% if stats.joining_trends %}{{ stats.joining_trends|length }} Months Tracked{% else %}All Time{% endif %}</span>
+        </div>
+        <div class="card-body">
+            {% if stats.joining_trends %}
+                <div class="chart-container">
+                    <canvas id="joiningTrendsChart"></canvas>
+                </div>
+            {% else %}
+                <div class="empty-state-box">
+                    <i data-lucide="line-chart" class="empty-state-icon"></i>
+                    <p class="empty-state-title">No Joining Trends Available</p>
+                    <p class="empty-state-desc">Historical hiring patterns will appear here as employees are added.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Recently Added Employees -->
+<div class="card mt-6">
+    <div class="card-header">
+        <div class="card-header-title">
+            <i data-lucide="clock"></i>
+            <h3>Recent Employee Additions</h3>
+        </div>
+        <div class="card-actions">
+            <a href="{{ url_for('employees.add') }}" class="btn btn-primary btn-sm">
+                <i data-lucide="user-plus"></i>
+                <span>Add Employee</span>
+            </a>
+            <a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline btn-sm">
+                <span>View Full Roster</span>
+                <i data-lucide="arrow-right"></i>
+            </a>
+        </div>
+    </div>
+
+    <div class="card-body p-0">
+        {% if recent_employees %}
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Employee ID</th>
+                            <th>Full Name</th>
+                            <th>Department</th>
+                            <th>Job Title</th>
+                            <th>Joining Date</th>
+                            <th>Salary</th>
+                            <th>Status</th>
+                            <th class="text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for emp in recent_employees %}
+                            <tr>
+                                <td><span class="id-badge">#EMP-{{ "%04d"|format(emp.id) }}</span></td>
+                                <td>
+                                    <div class="table-user-cell">
+                                        <div class="user-avatar-sm">{{ emp.full_name[:2].upper() }}</div>
+                                        <div class="user-details">
+                                            <a href="{{ url_for('employees.detail', emp_id=emp.id) }}" class="user-name-link">{{ emp.full_name }}</a>
+                                            <span class="user-subtext">{{ emp.email }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="dept-tag">{{ emp.department_name }}</span></td>
+                                <td>{{ emp.job_title }}</td>
+                                <td>{{ emp.joining_date | format_date }}</td>
+                                <td class="font-medium">{{ emp.salary | currency }}</td>
+                                <td>
+                                    <span class="status-pill status-{{ emp.status|lower }}">{{ emp.status }}</span>
+                                </td>
+                                <td class="text-right">
+                                    <a href="{{ url_for('employees.detail', emp_id=emp.id) }}" class="btn-icon" title="View Profile">
+                                        <i data-lucide="eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state-box">
+                <i data-lucide="user-x" class="empty-state-icon"></i>
+                <p class="empty-state-title">No Employees Found</p>
+                <p class="empty-state-desc">The employee database is currently empty. Get started by adding your first team member.</p>
+                <a href="{{ url_for('employees.add') }}" class="btn btn-primary mt-4">
+                    <i data-lucide="user-plus"></i>
+                    <span>Register New Employee</span>
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Charts Initialization -->
+<script>
+    window.emsChartData = {{ chart_data | tojson }};
+</script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

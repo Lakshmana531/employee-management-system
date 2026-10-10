@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Connection Required - EMS Portal</title>
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Main Stylesheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="auth-body">
+    <div class="auth-card-wrapper" style="max-width: 650px;">
+        <div class="card p-6">
+            <div class="auth-header mb-6">
+                <div class="auth-brand-icon text-amber" style="background: rgba(245, 158, 11, 0.1);">
+                    <i data-lucide="database"></i>
+                </div>
+                <h2>MySQL Connection Unavailable</h2>
+                <p>The application could not establish a connection to your MySQL Server.</p>
+            </div>
+
+            <div class="alert alert-warning mb-6">
+                <div class="alert-icon"><i data-lucide="alert-triangle"></i></div>
+                <div class="alert-content">
+                    <strong>Connection Diagnostic:</strong>
+                    <p class="text-sm mt-1"><code>{{ error_message }}</code></p>
+                </div>
+            </div>
+
+            <div class="setup-guide-box">
+                <h4 class="font-semibold text-sm mb-3 text-slate-800">Troubleshooting Steps to Resolve:</h4>
+                <ol class="setup-steps-list">
+                    <li>
+                        <strong>Verify MySQL Server is running:</strong>
+                        <p class="text-xs text-muted">Open Windows Services (<code>services.msc</code>) or MySQL Workbench / XAMPP and verify the MySQL service is started on port 3306.</p>
+                    </li>
+                    <li>
+                        <strong>Configure your <code>.env</code> file:</strong>
+                        <p class="text-xs text-muted">Copy <code>.env.example</code> to <code>.env</code> in the project root and fill in your MySQL credentials (<code>DB_USER</code> and <code>DB_PASSWORD</code>).</p>
+                    </li>
+                    <li>
+                        <strong>Initialize the database schema:</strong>
+                        <p class="text-xs text-muted">Run <code>python seed.py</code> in your terminal to create the database, tables, and demo records.</p>
+                    </li>
+                </ol>
+            </div>
+
+            <div class="mt-6 text-center">
+                <button onclick="window.location.reload()" class="btn btn-primary">
+                    <i data-lucide="rotate-cw"></i>
+                    <span>Retry Connection</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>
