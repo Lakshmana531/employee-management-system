@@ -421,3 +421,27 @@ def test_clean_sql_statements_filters_db_commands_for_cloud():
     assert not any("USE " in s for s in stmts)
 
 
+def test_resolve_database_config_from_url():
+    """Verify that _resolve_database_config correctly parses full connection URLs (DATABASE_URL/MYSQL_URL)."""
+    import os
+    from config import _resolve_database_config
+
+    cloud_url = "mysql://avnadmin:SecretPass123%21@mysql-project.aivencloud.com:12345/defaultdb"
+    env_vars = {
+        'DATABASE_URL': cloud_url,
+        'DB_HOST': '',
+        'DB_PORT': '',
+        'DB_USER': '',
+        'DB_PASSWORD': '',
+        'DB_NAME': '',
+    }
+    with patch.dict(os.environ, env_vars, clear=False):
+        host, port, user, password, dbname = _resolve_database_config()
+        assert host == "mysql-project.aivencloud.com"
+        assert port == 12345
+        assert user == "avnadmin"
+        assert password == "SecretPass123!"
+        assert dbname == "defaultdb"
+
+
+

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -44,11 +44,16 @@
                         <p class="text-xs text-muted">Copy <code>.env.example</code> to <code>.env</code> in the project root and fill in your MySQL credentials (<code>DB_USER</code> and <code>DB_PASSWORD</code>).</p>
                     </li>
                     <li>
+                        <strong>For Cloud Deployments (Render / Aiven / Railway):</strong>
+                        <p class="text-xs text-muted">Open your Render Dashboard &rarr; Web Service &rarr; <strong>Environment</strong> tab and configure your external database credentials: <code>DB_HOST</code>, <code>DB_PORT</code>, <code>DB_USER</code>, <code>DB_PASSWORD</code>, and <code>DB_NAME</code> (or paste your connection URI into <code>DATABASE_URL</code>).</p>
+                    </li>
+                    <li>
                         <strong>Initialize the database schema:</strong>
-                        <p class="text-xs text-muted">Run <code>python seed.py</code> in your terminal to create the database, tables, and demo records.</p>
+                        <p class="text-xs text-muted">Run <code>flask init-db</code> (or <code>python seed.py</code>) in your terminal or Render Shell to create the database tables and starter records.</p>
                     </li>
                 </ol>
             </div>
+
 
             <div class="mt-6 text-center">
                 <button onclick="window.location.reload()" class="btn btn-primary">

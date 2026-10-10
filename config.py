@@ -4,6 +4,7 @@ Loads configuration settings from environment variables with safe defaults.
 """
 import os
 from pathlib import Path
+from urllib.parse import urlparse, unquote
 from dotenv import load_dotenv
 
 # Base directory of the application
@@ -26,16 +27,44 @@ INSECURE_SECRET_KEYS = {
 }
 
 
+def _resolve_database_config():
+    """
+    Resolves MySQL connection settings from either individual environment variables
+    (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME) or a unified connection URL
+    (DATABASE_URL, MYSQL_URL, JAWSDB_URL, CLEARDB_DATABASE_URL).
+    """
+    db_url = (
+        os.environ.get('DATABASE_URL')
+        or os.environ.get('MYSQL_URL')
+        or os.environ.get('JAWSDB_URL')
+        or os.environ.get('CLEARDB_DATABASE_URL')
+    )
+    _p = None
+    if db_url:
+        try:
+            _p = urlparse(db_url)
+        except Exception:
+            _p = None
+
+    host = os.environ.get('DB_HOST') or (_p.hostname if _p and _p.hostname else None) or 'localhost'
+    port = int(os.environ.get('DB_PORT') or (_p.port if _p and _p.port else 3306))
+    user = os.environ.get('DB_USER') or (_p.username if _p and _p.username else None) or 'root'
+    password = os.environ.get('DB_PASSWORD') or (unquote(_p.password) if _p and _p.password else '')
+    dbname = os.environ.get('DB_NAME') or (_p.path.lstrip('/') if _p and _p.path else None) or 'employee_db'
+    return host, port, user, password, dbname
+
+
 class Config:
     """Base Configuration Class."""
     SECRET_KEY = os.environ.get('SECRET_KEY', 'dev-insecure-secret-key-change-me')
     
-    # Database Settings
-    DB_HOST = os.environ.get('DB_HOST', 'localhost')
-    DB_PORT = int(os.environ.get('DB_PORT', 3306))
-    DB_USER = os.environ.get('DB_USER', 'root')
-    DB_PASSWORD = os.environ.get('DB_PASSWORD', '')
-    DB_NAME = os.environ.get('DB_NAME', 'employee_db')
+    # Database Settings (supports DB_* vars or DATABASE_URL / MYSQL_URL)
+    _host, _port, _user, _pass, _name = _resolve_database_config()
+    DB_HOST = _host
+    DB_PORT = _port
+    DB_USER = _user
+    DB_PASSWORD = _pass
+    DB_NAME = _name
     
     # SSL/TLS Database Settings (for managed cloud databases e.g., Aiven, AWS RDS)
     DB_SSL_CA = os.environ.get('DB_SSL_CA', None)
@@ -43,6 +72,7 @@ class Config:
 
     # Connection Pool Settings
     DB_POOL_NAME = 'ems_pool'
+
     DB_POOL_SIZE = int(os.environ.get('DB_POOL_SIZE', 5))
     
     # Application Preferences
