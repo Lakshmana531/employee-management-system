@@ -358,7 +358,8 @@ The application includes comprehensive automated unit and integration tests usin
 python -m pytest tests/ -v
 ```
 
-All **60 automated unit and integration tests** run in under 2 seconds, validating:
+All **64 automated unit and integration tests** run in under 2 seconds, validating:
+
 - **Employee CRUD Operations**: Full Create, Read, Update, and Delete endpoints and service operations.
 - **Form Data Validation**: Server-side checks for required fields, email format, phone numbers, date boundaries, status enums, non-negative/maximum salary bounds, and text length limits.
 - **Duplicate Email Prevention**: Blocks duplicate emails on creation and updates while permitting employees to retain their own email when updating other attributes.

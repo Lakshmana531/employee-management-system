@@ -70,24 +70,64 @@ def _build_ssl_config(cfg):
 def get_db_pool():
     """
     Initializes or returns the existing MySQL connection pool.
-    Uses current Flask app config or default environment settings.
+    Dynamically resolves credentials from environment/Flask config and ensures
+    production cloud environments do not fall back to local addresses.
     """
     global _connection_pool
     if _connection_pool is not None:
         return _connection_pool
 
-    from config import get_config
+    from config import get_config, is_production_environment, _resolve_database_config
     cfg = current_app.config if current_app else get_config()
+    is_prod = is_production_environment() or (current_app and current_app.config.get('ENV') == 'production')
+
+    # Dynamically resolve credentials from environment variables / connection URLs
+    env_host, env_port, env_user, env_pass, env_name = _resolve_database_config(is_production=is_prod)
+
+    host = _get_setting(cfg, 'DB_HOST') or env_host
+    port = _get_setting(cfg, 'DB_PORT') or env_port or 3306
+    user = _get_setting(cfg, 'DB_USER') or env_user
+    password = _get_setting(cfg, 'DB_PASSWORD') if _get_setting(cfg, 'DB_PASSWORD') is not None else env_pass
+    database = _get_setting(cfg, 'DB_NAME') or env_name
+
+    # In cloud production (Render), guard against unconfigured localhost fallbacks
+    if is_prod:
+        if not host or str(host).lower() in ('localhost', '127.0.0.1', '::1'):
+            raise DatabaseConnectionError(
+                "Hosted MySQL database is not configured. In cloud production (Render), "
+                "the application cannot connect to 'localhost:3306'. "
+                "Please configure DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, and DB_NAME "
+                "(or provide your connection URI in DATABASE_URL) in your Render service Environment tab."
+            )
+        if not user or not database:
+            missing = []
+            if not user:
+                missing.append("DB_USER")
+            if not password:
+                missing.append("DB_PASSWORD")
+            if not database:
+                missing.append("DB_NAME")
+            raise DatabaseConnectionError(
+                f"Hosted MySQL credentials incomplete. Missing required variable(s): {', '.join(missing)}. "
+                "Please configure these in your Render service Environment tab."
+            )
+    else:
+        # Development fallback
+        host = host or 'localhost'
+        port = port or 3306
+        user = user or 'root'
+        password = password or ''
+        database = database or 'employee_db'
 
     try:
         pool_config = {
             'pool_name': _get_setting(cfg, 'DB_POOL_NAME', 'ems_pool'),
             'pool_size': int(_get_setting(cfg, 'DB_POOL_SIZE', 5)),
-            'host': _get_setting(cfg, 'DB_HOST', 'localhost'),
-            'port': int(_get_setting(cfg, 'DB_PORT', 3306)),
-            'user': _get_setting(cfg, 'DB_USER', 'root'),
-            'password': _get_setting(cfg, 'DB_PASSWORD', ''),
-            'database': _get_setting(cfg, 'DB_NAME', 'employee_db'),
+            'host': host,
+            'port': int(port),
+            'user': user,
+            'password': password,
+            'database': database,
             'autocommit': False,
             'charset': 'utf8mb4',
             'collation': 'utf8mb4_unicode_ci',
@@ -95,12 +135,16 @@ def get_db_pool():
         }
         pool_config.update(_build_ssl_config(cfg))
         _connection_pool = pooling.MySQLConnectionPool(**pool_config)
-        logger.info("MySQL connection pool '%s' initialized.", pool_config['pool_name'])
+        logger.info("MySQL connection pool '%s' initialized (host: %s, database: %s).", pool_config['pool_name'], host, database)
         return _connection_pool
     except mysql.connector.Error as err:
         logger.error("Failed to initialize MySQL connection pool: %s", err)
         _connection_pool = None
-        raise DatabaseConnectionError(f"Database connection failed: {err.msg}") from err
+        # Safe error message: never discloses password or secret keys
+        raise DatabaseConnectionError(
+            f"Could not connect to MySQL server at '{host}:{port}' (database: '{database}', user: '{user}'): {err.msg}"
+        ) from err
+
 
 
 def get_db_connection():
@@ -169,14 +213,39 @@ def check_db_connection():
     Returns:
         tuple (bool is_healthy, dict details)
     """
-    from config import get_config
+    from config import get_config, is_production_environment, _resolve_database_config
     cfg = current_app.config if current_app else get_config()
+    is_prod = is_production_environment()
     
-    host = _get_setting(cfg, 'DB_HOST', 'localhost')
-    port = _get_setting(cfg, 'DB_PORT', 3306)
-    user = _get_setting(cfg, 'DB_USER', 'root')
-    password = _get_setting(cfg, 'DB_PASSWORD', '')
-    database = _get_setting(cfg, 'DB_NAME', 'employee_db')
+    env_host, env_port, env_user, env_pass, env_name = _resolve_database_config(is_production=is_prod)
+
+    host = _get_setting(cfg, 'DB_HOST') or env_host
+    port = _get_setting(cfg, 'DB_PORT') or env_port or 3306
+    user = _get_setting(cfg, 'DB_USER') or env_user
+    password = _get_setting(cfg, 'DB_PASSWORD') if _get_setting(cfg, 'DB_PASSWORD') is not None else env_pass
+    database = _get_setting(cfg, 'DB_NAME') or env_name
+
+    if is_prod and (not host or str(host).lower() in ('localhost', '127.0.0.1', '::1')):
+        return False, {
+            'status': 'Disconnected',
+            'error_code': 'NOT_CONFIGURED',
+            'error_message': (
+                "Hosted MySQL database is not configured. In cloud production (Render), "
+                "the application cannot connect to 'localhost:3306'. "
+                "Please configure DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, and DB_NAME "
+                "(or DATABASE_URL) in your Render service Environment tab."
+            ),
+            'host': f"{host or 'unconfigured'}:{port}",
+            'database': database or 'unconfigured',
+            'troubleshooting': "Open Render Dashboard -> Web Service -> Environment and configure your hosted MySQL variables."
+        }
+
+    if not is_prod:
+        host = host or 'localhost'
+        port = port or 3306
+        user = user or 'root'
+        password = password or ''
+        database = database or 'employee_db'
 
     conn_params = {
         'host': host,
@@ -229,14 +298,31 @@ def init_db(schema_file=None):
     (such as Aiven, AWS RDS, or Render) without requiring root/super privileges.
     Falls back to creating the database only if missing in local environments.
     """
-    from config import get_config
+    from config import get_config, is_production_environment, _resolve_database_config
     cfg = current_app.config if current_app else get_config()
+    is_prod = is_production_environment()
 
-    host = _get_setting(cfg, 'DB_HOST', 'localhost')
-    port = int(_get_setting(cfg, 'DB_PORT', 3306))
-    user = _get_setting(cfg, 'DB_USER', 'root')
-    password = _get_setting(cfg, 'DB_PASSWORD', '')
-    db_name = _get_setting(cfg, 'DB_NAME', 'employee_db')
+    env_host, env_port, env_user, env_pass, env_name = _resolve_database_config(is_production=is_prod)
+
+    host = _get_setting(cfg, 'DB_HOST') or env_host
+    port = _get_setting(cfg, 'DB_PORT') or env_port or 3306
+    user = _get_setting(cfg, 'DB_USER') or env_user
+    password = _get_setting(cfg, 'DB_PASSWORD') if _get_setting(cfg, 'DB_PASSWORD') is not None else env_pass
+    db_name = _get_setting(cfg, 'DB_NAME') or env_name
+
+    if is_prod and (not host or str(host).lower() in ('localhost', '127.0.0.1', '::1')):
+        raise DatabaseConnectionError(
+            "Cannot initialize database: DB_HOST is not configured or pointing to 'localhost' in production. "
+            "Please configure DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, and DB_NAME (or DATABASE_URL) "
+            "in your Render environment variables."
+        )
+
+    if not is_prod:
+        host = host or 'localhost'
+        port = port or 3306
+        user = user or 'root'
+        password = password or ''
+        db_name = db_name or 'employee_db'
     
     if schema_file is None:
         schema_file = Path(__file__).resolve().parent / 'schema.sql'
@@ -253,12 +339,13 @@ def init_db(schema_file=None):
 
     base_params = {
         'host': host,
-        'port': port,
+        'port': int(port),
         'user': user,
         'password': password,
         'connect_timeout': 5,
     }
     base_params.update(_build_ssl_config(cfg))
+
 
     conn = None
     # Step 1: Connect directly to the specified database (preferred for cloud databases)

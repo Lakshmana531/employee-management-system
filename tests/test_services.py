@@ -391,15 +391,24 @@ def test_production_config_rejects_missing_or_insecure_secret_key():
 
 
 def test_production_config_accepts_strong_secret_key():
-    """Verify that ProductionConfig successfully accepts a cryptographically strong SECRET_KEY."""
+    """Verify that ProductionConfig successfully accepts a cryptographically strong SECRET_KEY and valid hosted DB."""
     import os
     from config import ProductionConfig
 
     strong_key = "a1b2c3d4e5f678901234567890abcdef"
-    with patch.dict(os.environ, {'SECRET_KEY': strong_key}, clear=False):
-        validated = ProductionConfig.validate_production()
-        assert validated == strong_key
+    env_vars = {
+        'SECRET_KEY': strong_key,
+        'DB_HOST': 'mysql.aivencloud.com',
+        'DB_USER': 'avnadmin',
+        'DB_PASSWORD': 'strongpassword',
+        'DB_NAME': 'defaultdb',
+        'DATABASE_URL': '',
+    }
+    with patch.dict(os.environ, env_vars, clear=False):
+        validated = ProductionConfig.validate_production(raise_for_db=True)
+        assert validated is True
         assert ProductionConfig.SECRET_KEY == strong_key
+
 
 
 def test_clean_sql_statements_filters_db_commands_for_cloud():
@@ -442,6 +451,92 @@ def test_resolve_database_config_from_url():
         assert user == "avnadmin"
         assert password == "SecretPass123!"
         assert dbname == "defaultdb"
+
+
+def test_is_production_environment_detection():
+    """Verify that is_production_environment correctly identifies Render, FLASK_ENV, and local dev."""
+    import os
+    from config import is_production_environment
+
+    # 1. Local dev with no flags -> False
+    with patch.dict(os.environ, {'FLASK_ENV': 'development', 'RENDER': '', 'ENVIRONMENT': ''}, clear=False):
+        assert is_production_environment() is False
+
+    # 2. Render cloud platform (RENDER=true) -> True
+    with patch.dict(os.environ, {'FLASK_ENV': '', 'RENDER': 'true'}, clear=False):
+        assert is_production_environment() is True
+
+    # 3. Explicit FLASK_ENV=production -> True
+    with patch.dict(os.environ, {'FLASK_ENV': 'production', 'RENDER': ''}, clear=False):
+        assert is_production_environment() is True
+
+
+def test_resolve_database_config_trims_whitespace_and_quotes():
+    """Verify that _resolve_database_config cleanly handles whitespace and quotes commonly pasted into web UIs."""
+    import os
+    from config import _resolve_database_config
+
+    env_vars = {
+        'DATABASE_URL': '',
+        'DB_HOST': '  "mysql-custom.aivencloud.com"  ',
+        'DB_PORT': ' 13579 ',
+        'DB_USER': " 'avnadmin' ",
+        'DB_PASSWORD': '  "MyStrongPassword!"  ',
+        'DB_NAME': ' defaultdb ',
+    }
+    with patch.dict(os.environ, env_vars, clear=False):
+        host, port, user, password, dbname = _resolve_database_config(is_production=True)
+        assert host == "mysql-custom.aivencloud.com"
+        assert port == 13579
+        assert user == "avnadmin"
+        assert password == "MyStrongPassword!"
+        assert dbname == "defaultdb"
+
+
+def test_production_config_rejects_localhost_in_production():
+    """Verify that ProductionConfig.validate_production(raise_for_db=True) rejects localhost database host."""
+    import os
+    import pytest
+    from config import ProductionConfig
+
+    env_vars = {
+        'SECRET_KEY': 'a1b2c3d4e5f678901234567890abcdef',
+        'DB_HOST': 'localhost',
+        'DB_USER': 'root',
+        'DB_NAME': 'employee_db',
+        'DATABASE_URL': '',
+    }
+    with patch.dict(os.environ, env_vars, clear=False):
+        with pytest.raises(ValueError, match="Production database configuration error"):
+            ProductionConfig.validate_production(raise_for_db=True)
+
+
+def test_get_db_pool_raises_clear_error_when_localhost_in_production():
+    """Verify that get_db_pool raises DatabaseConnectionError with Render troubleshooting guidance when DB is localhost."""
+    import os
+    import pytest
+    import db
+    from db import get_db_pool, DatabaseConnectionError
+
+    # Reset any existing pool
+    db._connection_pool = None
+
+    env_vars = {
+        'FLASK_ENV': 'production',
+        'RENDER': 'true',
+        'SECRET_KEY': 'a1b2c3d4e5f678901234567890abcdef',
+        'DB_HOST': 'localhost',
+        'DB_USER': 'root',
+        'DB_NAME': 'employee_db',
+        'DATABASE_URL': '',
+    }
+    with patch.dict(os.environ, env_vars, clear=False):
+        with pytest.raises(DatabaseConnectionError, match="Hosted MySQL database is not configured"):
+            get_db_pool()
+
+    # Reset pool after test
+    db._connection_pool = None
+
 
 
 
